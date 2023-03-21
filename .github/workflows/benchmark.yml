@@ -1,0 +1,85 @@
+name: Benchmark (PR)
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!**.md'
+
+jobs:
+  Benchmark:
+    strategy:
+      matrix:
+        go-version:
+          - 1.18.x
+          - 1.19.x
+          - 1.x
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Install Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Install benchstat
+      run: | 
+        go install golang.org/x/perf/cmd/benchstat@latest
+        go install github.com/msaf1980/qbenchstat/cmd/qbenchstat@latest
+
+    - name: Setup benchmarks
+      run: |
+        echo "PR_COMMENT=$(mktemp)" >> $GITHUB_ENV
+        echo "TMP_DIR=$(mktemp -d)" >> $GITHUB_ENV
+
+    - name: Get commit short sha
+      run: |
+        echo "BASE_SHA=`echo ${{ github.event.pull_request.base.sha }} | cut -c1-8`" >> $GITHUB_ENV
+        echo "HEAD_SHA=`echo ${{ github.event.pull_request.head.sha }} | cut -c1-8`" >> $GITHUB_ENV
+
+    - name: Checkout (PR)
+      uses: actions/checkout@v1
+
+    - name: Benchmark (PR)
+      run: |
+        go test count 6 -benchmem -run=^$ -bench ^Benchmark ./... | tee ${{ env.TMP_DIR }}/bench-pr.txt
+
+    - name: Benchmark (Base)
+      if: ${{ steps.changed.outputs.changed != '' }}
+      run: |
+        git checkout ${{ github.event.pull_request.base.sha }}
+        go test count 6 -benchmem -run=^$ -bench ^Benchmark ./... | tee ${{ env.TMP_DIR }}/bench-base.txt
+
+    - name: Benchstat
+      run: |
+        set -euo pipefail
+        cp ${{ env.TMP_DIR }}/bench-base.txt ${{ env.TMP_DIR }}/bench-pr.txt .
+        qbenchstat -increasing 'match/s' -threshold 2 -format html bench-base.txt bench-pr.txt > ${{ env.TMP_DIR }}/benchstat.html
+        qbenchstat -increasing 'match/s' -format html bench-base.txt bench-pr.txt > benchstat_${{ matrix.go-version }}.html
+
+    - name: Upload Benchstat
+      uses: actions/upload-artifact@v2
+      with: 
+        name: benchstat_${{ env.HEAD_SHA }}
+        path: benchstat_${{ matrix.go-version }}.html
+
+    - name: Create comment PR
+      if: env.REGRESSION_DETECT
+      run: |
+        echo "<details><summary>Benchmark comparison (id ${{ github.run_id }}) for golang ${{ matrix.go-version }} on ${{ github.event.pull_request.base.ref }} [${{ env.BASE_SHA }}] vs ${{ github.event.pull_request.head.ref }} [${{ env.HEAD_SHA }}]</summary>" > ${{ env.TMP_DIR }}/pr_comment
+        cat ${{ env.TMP_DIR }}/benchstat.html >> ${{ env.TMP_DIR }}/pr_comment
+        echo "</details>" >> ${{ env.TMP_DIR }}/pr_comment
+
+    - name: Comment PR
+      if: env.REGRESSION_DETECT
+      uses: actions/github-script@v4.0.2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          github.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: require('fs').readFileSync('${{ env.TMP_DIR }}/pr_comment').toString()
+          });

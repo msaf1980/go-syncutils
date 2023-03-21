@@ -1,0 +1,38 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+      - devel
+  pull_request:
+    branches:
+      - master
+      - devel
+
+jobs:
+
+  tests:
+    name: Test code
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go:
+          - ^1.18
+          - ^1.19
+          - ^1
+    steps:
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3.1.0
+        with:
+          fetch-depth: 200
+
+      - name: Test
+        run: |
+          go test -coverprofile cover.out ./...
