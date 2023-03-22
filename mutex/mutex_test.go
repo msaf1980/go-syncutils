@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -127,21 +128,6 @@ func BenchmarkN0T_MutexTryLockUnlock(b *testing.B) {
 	}
 }
 
-func BenchmarkDT_MutexLockUnlock(b *testing.B) {
-	mx := sync.Mutex{}
-
-	for i := 0; i < b.N; i++ {
-		mx.Lock()
-
-		go func() {
-			mx.Unlock()
-		}()
-
-		mx.Lock()
-		mx.Unlock()
-	}
-}
-
 func TestMutex(t *testing.T) {
 
 	var mx Mutex
@@ -170,6 +156,66 @@ func TestMutex(t *testing.T) {
 		t.Fatal("TestMutex t2 fail R lock duration")
 	}
 
+}
+
+func TestMutex_Invalid_Unlock(t *testing.T) {
+	var mx Mutex
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("TestRWMutex Unlock must panic")
+		}
+	}()
+
+	mx.Unlock()
+}
+
+func TestMutex_Race(t *testing.T) {
+
+	var (
+		mx            RWMutex
+		wgStart       sync.WaitGroup
+		wg            sync.WaitGroup
+		locks, rlocks int64
+	)
+
+	n := 1000
+	clients := 1000
+	wgStart.Add(2 * clients)
+	wg.Add(2 * clients)
+
+	// rw lock
+	for j := 0; j < clients; j++ {
+		go func() {
+			wgStart.Done()
+			wgStart.Wait()
+			for i := 0; i < n; i++ {
+				mx.Lock()
+				time.Sleep(time.Microsecond)
+				mx.Unlock()
+				atomic.AddInt64(&locks, 1)
+			}
+			wg.Done()
+		}()
+	}
+
+	// read lock
+	for j := 0; j < clients; j++ {
+		go func() {
+			wgStart.Done()
+			wgStart.Wait()
+			for i := 0; i < n; i++ {
+				mx.RLock()
+				time.Sleep(time.Microsecond)
+				mx.RUnlock()
+				atomic.AddInt64(&rlocks, 1)
+			}
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
 }
 
 // TODO: make normal test

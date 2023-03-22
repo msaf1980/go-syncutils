@@ -4,12 +4,22 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
 func BenchmarkRWMutexLockUnlock(b *testing.B) {
 	mx := RWMutex{}
+
+	for i := 0; i < b.N; i++ {
+		mx.Lock()
+		mx.Unlock()
+	}
+}
+
+func _BenchmarkMutexStdLockUnlock(b *testing.B) {
+	mx := sync.Mutex{}
 
 	for i := 0; i < b.N; i++ {
 		mx.Lock()
@@ -155,6 +165,21 @@ func BenchmarkDT_RWMutexTryLockUnlock(b *testing.B) {
 	}
 }
 
+func _BenchmarkDT_MutexStdLockUnlock(b *testing.B) {
+	mx := sync.Mutex{}
+
+	for i := 0; i < b.N; i++ {
+		mx.Lock()
+
+		go func() {
+			mx.Unlock()
+		}()
+
+		mx.Lock()
+		mx.Unlock()
+	}
+}
+
 func BenchmarkNT_RWMutexTryLockUnlock(b *testing.B) {
 	ctx := context.Background()
 	mx := RWMutex{}
@@ -169,6 +194,32 @@ func BenchmarkNT_RWMutexTryLockUnlock(b *testing.B) {
 		for j := 0; j < k; j++ {
 			go func() {
 				mx.LockWithContext(ctx)
+
+				go func() {
+					mx.Unlock()
+					wg.Done()
+				}()
+			}()
+		}
+		mx.Unlock()
+
+		wg.Wait()
+	}
+}
+
+func BenchmarkNT_MutexStdLockUnlock(b *testing.B) {
+	mx := sync.Mutex{}
+
+	k := 1000
+
+	for i := 0; i < b.N; i++ {
+		var wg sync.WaitGroup
+		wg.Add(k)
+
+		mx.Lock()
+		for j := 0; j < k; j++ {
+			go func() {
+				mx.Lock()
 
 				go func() {
 					mx.Unlock()
@@ -217,7 +268,7 @@ func BenchmarkRWMutexTryRLockRUnlock(b *testing.B) {
 }
 
 func BenchmarkDT_RWMutexLockUnlock(b *testing.B) {
-	mx := sync.RWMutex{}
+	mx := RWMutex{}
 
 	for i := 0; i < b.N; i++ {
 		mx.Lock()
@@ -232,7 +283,7 @@ func BenchmarkDT_RWMutexLockUnlock(b *testing.B) {
 }
 
 func BenchmarkNT_RWMutexLockUnlock(b *testing.B) {
-	mx := sync.RWMutex{}
+	mx := RWMutex{}
 
 	k := 1000
 
@@ -281,57 +332,7 @@ func BenchmarkN0T_RWMutexLockUnlock(b *testing.B) {
 	}
 }
 
-func BenchmarkMutexStdLockUnlock(b *testing.B) {
-	mx := sync.Mutex{}
-
-	for i := 0; i < b.N; i++ {
-		mx.Lock()
-		mx.Unlock()
-	}
-}
-
-func BenchmarkDT_MutexStdLockUnlock(b *testing.B) {
-	mx := sync.Mutex{}
-
-	for i := 0; i < b.N; i++ {
-		mx.Lock()
-
-		go func() {
-			mx.Unlock()
-		}()
-
-		mx.Lock()
-		mx.Unlock()
-	}
-}
-
-func BenchmarkNT_MutexStdLockUnlock(b *testing.B) {
-	mx := sync.Mutex{}
-
-	k := 1000
-
-	for i := 0; i < b.N; i++ {
-		var wg sync.WaitGroup
-		wg.Add(k)
-
-		mx.Lock()
-		for j := 0; j < k; j++ {
-			go func() {
-				mx.Lock()
-
-				go func() {
-					mx.Unlock()
-					wg.Done()
-				}()
-			}()
-		}
-		mx.Unlock()
-
-		wg.Wait()
-	}
-}
-
-func BenchmarkN0T_MutexStdLockUnlock(b *testing.B) {
+func _BenchmarkN0T_MutexStdLockUnlock(b *testing.B) {
 	mx := sync.Mutex{}
 
 	k := 1000
@@ -355,20 +356,7 @@ func BenchmarkN0T_MutexStdLockUnlock(b *testing.B) {
 	}
 }
 
-func BenchmarkDT_N_MutexStdLockUnlock(b *testing.B) {
-	mx := sync.Mutex{}
-
-	for i := 0; i < b.N; i++ {
-		mx.Lock()
-
-		go func() {
-		}()
-
-		mx.Unlock()
-	}
-}
-
-func BenchmarkNT_N_MutexStdLockUnlock(b *testing.B) {
+func _BenchmarkNT_N_MutexStdLockUnlock(b *testing.B) {
 	mx := sync.Mutex{}
 
 	k := 1000
@@ -385,6 +373,19 @@ func BenchmarkNT_N_MutexStdLockUnlock(b *testing.B) {
 	}
 }
 
+func _BenchmarkDT_N_MutexStdLockUnlock(b *testing.B) {
+	mx := sync.Mutex{}
+
+	for i := 0; i < b.N; i++ {
+		mx.Lock()
+
+		go func() {
+		}()
+
+		mx.Unlock()
+	}
+}
+
 func TestRWMutex(t *testing.T) {
 
 	var mx RWMutex
@@ -395,6 +396,16 @@ func TestRWMutex(t *testing.T) {
 	}
 	if mx.TryLock() {
 		t.Fatal("TestRWMutex TryLock must fail")
+	}
+
+	mx.RUnlock()
+
+	if mx.TryLock() {
+		t.Fatal("TestRWMutex TryLock must fail")
+	}
+
+	if !mx.TryRLock() {
+		t.Fatal("TestRWMutex TryRLock must success")
 	}
 
 	mx.RUnlock()
@@ -432,6 +443,87 @@ func TestRWMutex(t *testing.T) {
 		t.Fatal("TestRWMutex t3 fail R lock duration")
 	}
 
+}
+
+func TestRWMutex_Invalid_Unlock(t *testing.T) {
+	var mx RWMutex
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("TestRWMutex Unlock must panic")
+		}
+	}()
+
+	mx.Unlock()
+}
+
+func TestRWMutex_Invalid_Unlock_AfterRLock(t *testing.T) {
+	var mx RWMutex
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("TestRWMutex Unlock must panic")
+		}
+	}()
+
+	mx.RLock()
+	mx.Unlock()
+}
+
+func TestRWMutex_Race(t *testing.T) {
+
+	var (
+		mx            RWMutex
+		wgStart       sync.WaitGroup
+		wg            sync.WaitGroup
+		locks, rlocks int64
+	)
+
+	n := 1000
+	clients := 1000
+	wgStart.Add(2 * clients)
+	wg.Add(2 * clients)
+
+	// rw lock
+	for j := 0; j < clients; j++ {
+		go func() {
+			wgStart.Done()
+			wgStart.Wait()
+			for i := 0; i < n; i++ {
+				mx.Lock()
+				time.Sleep(time.Microsecond)
+				mx.Unlock()
+				atomic.AddInt64(&locks, 1)
+			}
+			wg.Done()
+		}()
+	}
+
+	// read lock
+	for j := 0; j < clients; j++ {
+		go func() {
+			wgStart.Done()
+			wgStart.Wait()
+			for i := 0; i < n; i++ {
+				mx.RLock()
+				time.Sleep(time.Microsecond)
+				mx.RUnlock()
+				atomic.AddInt64(&rlocks, 1)
+			}
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+	want := int64(n * clients)
+	if rlocks != want {
+		t.Errorf("read locks count = %d, want %d", rlocks, want)
+	}
+	if locks != want {
+		t.Errorf("locks count = %d, want %d", rlocks, want)
+	}
 }
 
 // TODO: make normal test
