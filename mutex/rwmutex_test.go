@@ -309,7 +309,7 @@ func BenchmarkNT_RWMutexLockUnlock(b *testing.B) {
 }
 
 func BenchmarkN0T_RWMutexLockUnlock(b *testing.B) {
-	mx := sync.RWMutex{}
+	mx := RWMutex{}
 
 	k := 1000
 
@@ -415,7 +415,7 @@ func TestRWMutex(t *testing.T) {
 	mx.Unlock()
 
 	mx.Lock()
-	t1 := mx.RLockWithDuration(time.Millisecond)
+	t1 := mx.RLockWithTimeout(time.Millisecond)
 	if t1 {
 		t.Fatal("TestRWMutex t1 fail R lock duration")
 	}
@@ -433,8 +433,8 @@ func TestRWMutex(t *testing.T) {
 		mx.Unlock()
 	}()
 
-	t2 := mx.RLockWithDuration(10 * time.Millisecond)
-	t3 := mx.RLockWithDuration(10 * time.Millisecond)
+	t2 := mx.RLockWithTimeout(10 * time.Millisecond)
+	t3 := mx.RLockWithTimeout(10 * time.Millisecond)
 
 	if !t2 {
 		t.Fatal("TestRWMutex t2 fail R lock duration")
@@ -475,10 +475,11 @@ func TestRWMutex_Invalid_Unlock_AfterRLock(t *testing.T) {
 func TestRWMutex_Race(t *testing.T) {
 
 	var (
-		mx            RWMutex
-		wgStart       sync.WaitGroup
-		wg            sync.WaitGroup
-		locks, rlocks int64
+		mx      RWMutex
+		wgStart sync.WaitGroup
+		wg      sync.WaitGroup
+		locks   int64
+		rlocks  int64
 	)
 
 	n := 1000
@@ -522,7 +523,7 @@ func TestRWMutex_Race(t *testing.T) {
 		t.Errorf("read locks count = %d, want %d", rlocks, want)
 	}
 	if locks != want {
-		t.Errorf("locks count = %d, want %d", rlocks, want)
+		t.Errorf("locks count = %d, want %d", locks, want)
 	}
 }
 

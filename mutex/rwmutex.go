@@ -95,7 +95,7 @@ func (m *RWMutex) LockWithContext(ctx context.Context) bool {
 }
 
 // LockD - try locks mutex with time duration
-func (m *RWMutex) LockWithDuration(d time.Duration) bool {
+func (m *RWMutex) LockWithTimeout(d time.Duration) bool {
 	if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
 		return true
 	}
@@ -164,7 +164,7 @@ func (m *RWMutex) RLockWithContext(ctx context.Context) bool {
 }
 
 // RLockWithDuration - try read locks mutex with time duration
-func (m *RWMutex) RLockWithDuration(d time.Duration) bool {
+func (m *RWMutex) RLockWithTimeout(d time.Duration) bool {
 	k := atomic.LoadInt32(&m.state)
 	if k >= 0 && atomic.CompareAndSwapInt32(&m.state, k, k+1) {
 		return true

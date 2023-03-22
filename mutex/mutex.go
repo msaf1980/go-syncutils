@@ -95,7 +95,7 @@ func (m *Mutex) LockWithContext(ctx context.Context) bool {
 }
 
 // LockD - try locks mutex with time duration
-func (m *Mutex) LockWithDuration(d time.Duration) bool {
+func (m *Mutex) LockWithTimeout(d time.Duration) bool {
 	if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
 		return true
 	}
