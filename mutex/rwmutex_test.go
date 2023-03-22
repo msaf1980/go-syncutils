@@ -27,7 +27,7 @@ func BenchmarkRWMutexRLockRUnlock(b *testing.B) {
 }
 
 func BenchmarkRWMutexLockUnlock_Parallel(b *testing.B) {
-	concurrencyLevels := []int{5, 10, 20, 50}
+	concurrencyLevels := []int{5, 10, 20, 50, 100, 1000}
 	for _, clients := range concurrencyLevels {
 
 		b.Run(fmt.Sprintf("%d", clients), func(b *testing.B) {
@@ -59,7 +59,7 @@ func BenchmarkRWMutexLockUnlock_Parallel(b *testing.B) {
 }
 
 func BenchmarkRWMutexRLockRUnlock_Parallel(b *testing.B) {
-	concurrencyLevels := []int{5, 10, 20, 50}
+	concurrencyLevels := []int{5, 10, 20, 50, 100, 1000}
 	for _, clients := range concurrencyLevels {
 
 		b.Run(fmt.Sprintf("%d", clients), func(b *testing.B) {
@@ -91,7 +91,7 @@ func BenchmarkRWMutexRLockRUnlock_Parallel(b *testing.B) {
 }
 
 func BenchmarkRWMutexRWLockRWUnlock_Parallel(b *testing.B) {
-	concurrencyLevels := []int{5, 10, 20, 50}
+	concurrencyLevels := []int{5, 10, 20, 50, 100, 1000}
 	for _, clients := range concurrencyLevels {
 
 		b.Run(fmt.Sprintf("%d", clients), func(b *testing.B) {
@@ -281,7 +281,7 @@ func BenchmarkN0T_RWMutexLockUnlock(b *testing.B) {
 	}
 }
 
-func BenchmarkMutexLockUnlock(b *testing.B) {
+func BenchmarkMutexStdLockUnlock(b *testing.B) {
 	mx := sync.Mutex{}
 
 	for i := 0; i < b.N; i++ {
@@ -290,7 +290,7 @@ func BenchmarkMutexLockUnlock(b *testing.B) {
 	}
 }
 
-func BenchmarkDT_MutexLockUnlock(b *testing.B) {
+func BenchmarkDT_MutexStdLockUnlock(b *testing.B) {
 	mx := sync.Mutex{}
 
 	for i := 0; i < b.N; i++ {
@@ -305,7 +305,7 @@ func BenchmarkDT_MutexLockUnlock(b *testing.B) {
 	}
 }
 
-func BenchmarkNT_MutexLockUnlock(b *testing.B) {
+func BenchmarkNT_MutexStdLockUnlock(b *testing.B) {
 	mx := sync.Mutex{}
 
 	k := 1000
@@ -331,7 +331,7 @@ func BenchmarkNT_MutexLockUnlock(b *testing.B) {
 	}
 }
 
-func BenchmarkN0T_MutexLockUnlock(b *testing.B) {
+func BenchmarkN0T_MutexStdLockUnlock(b *testing.B) {
 	mx := sync.Mutex{}
 
 	k := 1000
@@ -355,7 +355,7 @@ func BenchmarkN0T_MutexLockUnlock(b *testing.B) {
 	}
 }
 
-func BenchmarkDT_N_MutexLockUnlock(b *testing.B) {
+func BenchmarkDT_N_MutexStdLockUnlock(b *testing.B) {
 	mx := sync.Mutex{}
 
 	for i := 0; i < b.N; i++ {
@@ -368,7 +368,7 @@ func BenchmarkDT_N_MutexLockUnlock(b *testing.B) {
 	}
 }
 
-func BenchmarkNT_N_MutexLockUnlock(b *testing.B) {
+func BenchmarkNT_N_MutexStdLockUnlock(b *testing.B) {
 	mx := sync.Mutex{}
 
 	k := 1000
@@ -429,7 +429,7 @@ func TestRWMutex(t *testing.T) {
 		t.Fatal("TestRWMutex t2 fail R lock duration")
 	}
 	if !t3 {
-		t.Fatal("TestRWMutex t2 fail R lock duration")
+		t.Fatal("TestRWMutex t3 fail R lock duration")
 	}
 
 }
