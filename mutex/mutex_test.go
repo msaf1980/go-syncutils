@@ -182,8 +182,8 @@ func TestMutex_Race(t *testing.T) {
 
 	n := 1000
 	clients := 1000
-	wgStart.Add(2 * clients)
-	wg.Add(2 * clients)
+	wgStart.Add(clients)
+	wg.Add(clients)
 
 	// rw lock
 	for j := 0; j < clients; j++ {

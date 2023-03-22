@@ -7,9 +7,7 @@ import (
 	"time"
 )
 
-const rwtmLocked int32 = -1 // rwlock
-
-// RWMutex - Read Write and Try Mutex
+// RWMutex - Read Write and Try Mutex with change priority (Promote and Reduce)
 type RWMutex struct {
 	state int32
 	mx    sync.Mutex
@@ -42,10 +40,6 @@ func (m *RWMutex) chClose() {
 	// it's need only when exists parallel
 	// to make faster need add counter to add drop listners of chan
 
-	if m.ch == nil {
-		return // it neet to test!!!! theoreticly works when channel get operation is befor atomic operations
-	}
-
 	var o chan struct{}
 	m.mx.Lock()
 	if m.ch != nil {
@@ -60,7 +54,7 @@ func (m *RWMutex) chClose() {
 
 // Lock - locks mutex
 func (m *RWMutex) Lock() {
-	if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
+	if atomic.CompareAndSwapInt32(&m.state, 0, -1) {
 
 		return
 	}
@@ -71,22 +65,22 @@ func (m *RWMutex) Lock() {
 
 // TryLock - try locks mutex
 func (m *RWMutex) TryLock() bool {
-	return atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked)
+	return atomic.CompareAndSwapInt32(&m.state, 0, -1)
 }
 
 // Unlock - unlocks mutex
 func (m *RWMutex) Unlock() {
-	if atomic.CompareAndSwapInt32(&m.state, rwtmLocked, 0) {
+	if atomic.CompareAndSwapInt32(&m.state, -1, 0) {
 		m.chClose()
 		return
 	}
 
-	panic("RWTMutex: Unlock fail")
+	panic("RWMutex: Unlock fail")
 }
 
 // LockWithContext - try locks mutex with context
 func (m *RWMutex) LockWithContext(ctx context.Context) bool {
-	if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
+	if atomic.CompareAndSwapInt32(&m.state, 0, -1) {
 		return true
 	}
 
@@ -96,7 +90,7 @@ func (m *RWMutex) LockWithContext(ctx context.Context) bool {
 
 // LockD - try locks mutex with time duration
 func (m *RWMutex) LockWithTimeout(d time.Duration) bool {
-	if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
+	if atomic.CompareAndSwapInt32(&m.state, 0, -1) {
 		return true
 	}
 
@@ -120,7 +114,7 @@ func (m *RWMutex) TryRLock() bool {
 	k := atomic.LoadInt32(&m.state)
 	if k >= 0 && atomic.CompareAndSwapInt32(&m.state, k, k+1) {
 		return true
-	} else if k == rwtmLocked {
+	} else if k == -1 {
 		return false
 	}
 
@@ -130,7 +124,7 @@ func (m *RWMutex) TryRLock() bool {
 		if k >= 0 && atomic.CompareAndSwapInt32(&m.state, k, k+1) {
 			m.mx.Unlock()
 			return true
-		} else if k == rwtmLocked {
+		} else if k == -1 {
 			m.mx.Unlock()
 			return false
 		}
@@ -149,7 +143,7 @@ func (m *RWMutex) RUnlock() {
 		return
 	}
 
-	panic("RWTMutex: RUnlock fail")
+	panic("RWMutex: RUnlock fail")
 }
 
 // RLockWithContext - try read locks mutex with context
@@ -177,7 +171,7 @@ func (m *RWMutex) RLockWithTimeout(d time.Duration) bool {
 func (m *RWMutex) lockS() {
 	ch := m.chGet()
 	for {
-		if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
+		if atomic.CompareAndSwapInt32(&m.state, 0, -1) {
 
 			return
 		}
@@ -193,7 +187,7 @@ func (m *RWMutex) lockS() {
 func (m *RWMutex) lockST(ctx context.Context) bool {
 	ch := m.chGet()
 	for {
-		if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
+		if atomic.CompareAndSwapInt32(&m.state, 0, -1) {
 
 			return true
 		}
@@ -217,7 +211,7 @@ func (m *RWMutex) lockSD(d time.Duration) bool {
 	t := time.After(d)
 	ch := m.chGet()
 	for {
-		if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
+		if atomic.CompareAndSwapInt32(&m.state, 0, -1) {
 
 			return true
 		}
@@ -272,7 +266,6 @@ func (m *RWMutex) rlockST(ctx context.Context) bool {
 		}
 
 	}
-
 }
 
 func (m *RWMutex) rlockSD(d time.Duration) bool {
@@ -291,7 +284,5 @@ func (m *RWMutex) rlockSD(d time.Duration) bool {
 		case <-t:
 			return false
 		}
-
 	}
-
 }

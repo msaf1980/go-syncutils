@@ -42,10 +42,6 @@ func (m *Mutex) chClose() {
 	// it's need only when exists parallel
 	// to make faster need add counter to add drop listners of chan
 
-	if m.ch == nil {
-		return // it neet to test!!!! theoreticly works when channel get operation is befor atomic operations
-	}
-
 	var o chan struct{}
 	m.mx.Lock()
 	if m.ch != nil {
@@ -60,7 +56,7 @@ func (m *Mutex) chClose() {
 
 // Lock - locks mutex
 func (m *Mutex) Lock() {
-	if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
+	if atomic.CompareAndSwapInt32(&m.state, 0, -1) {
 
 		return
 	}
@@ -71,22 +67,22 @@ func (m *Mutex) Lock() {
 
 // TryLock - try locks mutex
 func (m *Mutex) TryLock() bool {
-	return atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked)
+	return atomic.CompareAndSwapInt32(&m.state, 0, -1)
 }
 
 // Unlock - unlocks mutex
 func (m *Mutex) Unlock() {
-	if atomic.CompareAndSwapInt32(&m.state, rwtmLocked, 0) {
+	if atomic.CompareAndSwapInt32(&m.state, -1, 0) {
 		m.chClose()
 		return
 	}
 
-	panic("RWTMutex: Unlock fail")
+	panic("Mutex: Unlock fail")
 }
 
 // LockWithContext - try locks mutex with context
 func (m *Mutex) LockWithContext(ctx context.Context) bool {
-	if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
+	if atomic.CompareAndSwapInt32(&m.state, 0, -1) {
 		return true
 	}
 
@@ -96,7 +92,7 @@ func (m *Mutex) LockWithContext(ctx context.Context) bool {
 
 // LockD - try locks mutex with time duration
 func (m *Mutex) LockWithTimeout(d time.Duration) bool {
-	if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
+	if atomic.CompareAndSwapInt32(&m.state, 0, -1) {
 		return true
 	}
 
@@ -107,7 +103,7 @@ func (m *Mutex) LockWithTimeout(d time.Duration) bool {
 func (m *Mutex) lockS() {
 	ch := m.chGet()
 	for {
-		if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
+		if atomic.CompareAndSwapInt32(&m.state, 0, -1) {
 
 			return
 		}
@@ -123,7 +119,7 @@ func (m *Mutex) lockS() {
 func (m *Mutex) lockST(ctx context.Context) bool {
 	ch := m.chGet()
 	for {
-		if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
+		if atomic.CompareAndSwapInt32(&m.state, 0, -1) {
 
 			return true
 		}
@@ -147,7 +143,7 @@ func (m *Mutex) lockSD(d time.Duration) bool {
 	t := time.After(d)
 	ch := m.chGet()
 	for {
-		if atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked) {
+		if atomic.CompareAndSwapInt32(&m.state, 0, -1) {
 
 			return true
 		}
