@@ -43,13 +43,13 @@ jobs:
 
     - name: Benchmark (PR)
       run: |
-        go test count 6 -benchmem -run=^$ -bench ^Benchmark ./... | tee ${{ env.TMP_DIR }}/bench-pr.txt
+        go test -count 6 -benchmem -run=^$ -bench ^Benchmark ./... | tee ${{ env.TMP_DIR }}/bench-pr.txt
 
     - name: Benchmark (Base)
       if: ${{ steps.changed.outputs.changed != '' }}
       run: |
         git checkout ${{ github.event.pull_request.base.sha }}
-        go test count 6 -benchmem -run=^$ -bench ^Benchmark ./... | tee ${{ env.TMP_DIR }}/bench-base.txt
+        go test -count 6 -benchmem -run=^$ -bench ^Benchmark ./... | tee ${{ env.TMP_DIR }}/bench-base.txt
 
     - name: Benchstat
       run: |
