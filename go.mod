@@ -1,3 +1,3 @@
-module github.com/msaf1980/go-utils
+module github.com/msaf1980/go-syncutils
 
 go 1.16

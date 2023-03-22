@@ -389,6 +389,17 @@ func TestRWMutex(t *testing.T) {
 
 	var mx RWMutex
 
+	mx.RLock()
+	if !mx.TryRLock() {
+		t.Fatal("TestRWMutex TryRLock must success")
+	}
+	if mx.TryLock() {
+		t.Fatal("TestRWMutex TryLock must fail")
+	}
+
+	mx.RUnlock()
+	mx.RUnlock()
+
 	mx.Lock()
 	mx.Unlock()
 
@@ -396,6 +407,14 @@ func TestRWMutex(t *testing.T) {
 	t1 := mx.RLockWithDuration(time.Millisecond)
 	if t1 {
 		t.Fatal("TestRWMutex t1 fail R lock duration")
+	}
+
+	if mx.TryLock() {
+		t.Fatal("TestRWMutex TryLock must fail")
+	}
+
+	if mx.TryRLock() {
+		t.Fatal("TestRWMutex TryRLock must fail")
 	}
 
 	go func() {

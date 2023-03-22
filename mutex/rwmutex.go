@@ -26,6 +26,18 @@ func (m *RWMutex) chGet() chan struct{} {
 	return r
 }
 
+func (m *RWMutex) tryChGet() (chan struct{}, bool) {
+	if !m.mx.TryLock() {
+		return nil, false
+	}
+	if m.ch == nil {
+		m.ch = make(chan struct{}, 1)
+	}
+	r := m.ch
+	m.mx.Unlock()
+	return r, true
+}
+
 func (m *RWMutex) chClose() {
 	// it's need only when exists parallel
 	// to make faster need add counter to add drop listners of chan
@@ -55,6 +67,11 @@ func (m *RWMutex) Lock() {
 
 	// Slow way
 	m.lockS()
+}
+
+// TryLock - try locks mutex
+func (m *RWMutex) TryLock() bool {
+	return atomic.CompareAndSwapInt32(&m.state, 0, rwtmLocked)
 }
 
 // Unlock - unlocks mutex
@@ -96,6 +113,30 @@ func (m *RWMutex) RLock() {
 
 	// Slow way
 	m.rlockS()
+}
+
+// TryRLock - try read locks mutex
+func (m *RWMutex) TryRLock() bool {
+	k := atomic.LoadInt32(&m.state)
+	if k >= 0 && atomic.CompareAndSwapInt32(&m.state, k, k+1) {
+		return true
+	} else if k == rwtmLocked {
+		return false
+	}
+
+	// Slow way
+	if m.mx.TryLock() {
+		k := atomic.LoadInt32(&m.state)
+		if k >= 0 && atomic.CompareAndSwapInt32(&m.state, k, k+1) {
+			m.mx.Unlock()
+			return true
+		} else if k == rwtmLocked {
+			m.mx.Unlock()
+			return false
+		}
+	}
+
+	return false
 }
 
 // RUnlock - unlocks mutex
