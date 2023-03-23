@@ -58,6 +58,21 @@ func (m *PMutex) Lock() {
 	m.lockS()
 }
 
+// TryLock - try locks mutex
+func (m *PMutex) TryLock() (ok bool) {
+
+	m.mx.Lock()
+
+	if m.state == 0 {
+		m.state = -1
+		ok = true
+	}
+
+	m.mx.Unlock()
+
+	return
+}
+
 // Unlock - unlocks mutex
 func (m *PMutex) Unlock() {
 
@@ -130,6 +145,19 @@ func (m *PMutex) RLock() {
 
 	// Slow way
 	m.rlockS()
+}
+
+// TryRLock - read locks mutex
+func (m *PMutex) TryRLock() (ok bool) {
+	m.mx.Lock()
+
+	if m.state >= 0 {
+		m.state++
+		ok = true
+	}
+	m.mx.Unlock()
+
+	return
 }
 
 // RUnlock - unlocks mutex
@@ -323,6 +351,7 @@ func (m *PMutex) rlockSD(d time.Duration) bool {
 }
 
 // Promote - lock mutex from RLock to Lock
+// !!! use carefully - can produce deadlock, if promote from two grouroutines
 func (m *PMutex) Promote() {
 	m.mx.Lock()
 
@@ -335,6 +364,19 @@ func (m *PMutex) Promote() {
 
 	// Slow way
 	m.promoteS()
+}
+
+// TryPromote - lock mutex from RLock to Lock
+func (m *PMutex) TryPromote() (ok bool) {
+	m.mx.Lock()
+
+	if m.state == 1 {
+		m.state = -1
+		ok = true
+	}
+	m.mx.Unlock()
+
+	return
 }
 
 // PromoteWithContext - try locks mutex from RLock to Lock with context

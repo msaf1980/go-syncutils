@@ -190,18 +190,23 @@ func BenchmarkPMutexPromote_Parallel(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < clients; i++ {
 				wg.Add(1)
-				go func() {
+				go func(promote bool) {
 					wgStart.Done()
 					wgStart.Wait()
 					// Test routine
-					for n := 0; n < b.N; n++ {
+					if promote {
 						mx.RLock()
-						// mx.Promote()
+						mx.Promote()
 						mx.Unlock()
+					} else {
+						for n := 0; n < b.N; n++ {
+							mx.RLock()
+							mx.RUnlock()
+						}
 					}
 					// End test routine
 					wg.Done()
-				}()
+				}(i == 0)
 
 			}
 
@@ -285,6 +290,12 @@ func TestPMutexPromote(t *testing.T) {
 
 	mx.RLock()
 	mx.Promote()
+
+	t1 := mx.TryPromote()
+	if t1 {
+		t.Fatal("TestPMutex t1 must fail TryPromote")
+	}
+
 	mx.Unlock()
 
 	mx.Lock()
@@ -307,6 +318,13 @@ func TestPMutexPromote(t *testing.T) {
 
 	mx.Lock()
 	mx.Reduce()
+
+	t3 := mx.TryPromote()
+	if !t3 {
+		t.Fatal("TestPMutex t3 fail TryPromote")
+	}
+	mx.Reduce()
+
 	mx.RUnlock()
 
 }
