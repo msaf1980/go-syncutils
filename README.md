@@ -6,7 +6,7 @@
 - PMutex is promote (RWMutex with promote from read lock to read write lock) with timeout mechanism (with Trylock and Lock with timeout)
 
 ## atomic
-Simple wrappers for primitive types to enforce atomic access.
+Simple wrappers for primitive types to enforce atomic access (based on https://github.com/uber-go/atomic).
 
 ### Usage
 
