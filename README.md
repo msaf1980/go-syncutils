@@ -4,6 +4,7 @@
 ## mutex
 - Mutex and RWMutex with timeout mechanism (with Trylock and Lock with timeout)
 - PMutex is promote (RWMutex with promote from read lock to read write lock) with timeout mechanism (with Trylock and Lock with timeout)
+- ChanMutex is a simple mutex with channel
 
 ## atomic
 Simple wrappers for primitive types to enforce atomic access (based on https://github.com/uber-go/atomic).
