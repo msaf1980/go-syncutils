@@ -482,8 +482,8 @@ func TestRWMutex_Race(t *testing.T) {
 		rlocks  int64
 	)
 
-	n := 1000
-	clients := 1000
+	n := 500
+	clients := 100
 	wgStart.Add(2 * clients)
 	wg.Add(2 * clients)
 

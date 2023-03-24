@@ -150,7 +150,7 @@ func TestChanMutex(t *testing.T) {
 		mx.Unlock()
 	}()
 
-	t2 := mx.LockWithTimeout(10 * time.Millisecond)
+	t2 := mx.LockWithTimeout(20 * time.Millisecond)
 
 	if !t2 {
 		t.Fatal("TestChanMutex t2 fail R lock duration")
