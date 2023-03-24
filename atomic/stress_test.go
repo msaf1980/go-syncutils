@@ -28,6 +28,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"unsafe"
 )
 
 const (
@@ -36,20 +37,22 @@ const (
 )
 
 var _stressTests = map[string]func() func(){
-	"i32/std":  stressStdInt32,
-	"i32":      stressInt32,
-	"i64/std":  stressStdInt64,
-	"i64":      stressInt64,
-	"u32/std":  stressStdUint32,
-	"u32":      stressUint32,
-	"u64/std":  stressStdUint64,
-	"u64":      stressUint64,
-	"f64":      stressFloat64,
-	"bool":     stressBool,
-	"string":   stressString,
-	"duration": stressDuration,
-	"error":    stressError,
-	"time":     stressTime,
+	"i32/std":        stressStdInt32,
+	"i32":            stressInt32,
+	"i64/std":        stressStdInt64,
+	"i64":            stressInt64,
+	"u32/std":        stressStdUint32,
+	"u32":            stressUint32,
+	"u64/std":        stressStdUint64,
+	"u64":            stressUint64,
+	"f64":            stressFloat64,
+	"bool":           stressBool,
+	"string":         stressString,
+	"duration":       stressDuration,
+	"error":          stressError,
+	"time":           stressTime,
+	"pointer":        stressPointer,
+	"unsafe_pointer": stressUnsafePointer,
 }
 
 func TestStress(t *testing.T) {
@@ -284,6 +287,40 @@ func stressTime() func() {
 		atom.Store(dayAgo)
 		atom.Load()
 		atom.Store(weekAgo)
+		atom.CompareAndSwap(weekAgo, dayAgo)
 		atom.Store(time.Time{})
+	}
+}
+
+func stressUnsafePointer() func() {
+	var atom UnsafePointer
+	return func() {
+		atom.Load()
+		a := "abc"
+		aP := unsafe.Pointer(&a)
+		b := "bc"
+		bP := unsafe.Pointer(&b)
+		empty := ""
+		emptyP := unsafe.Pointer(&empty)
+		atom.Store(aP)
+		atom.Load()
+		atom.CompareAndSwap(aP, bP)
+		atom.Load()
+		atom.Store(emptyP)
+	}
+}
+
+func stressPointer() func() {
+	var atom Pointer[string]
+	return func() {
+		atom.Load()
+		a := "abc"
+		b := "bc"
+		empty := ""
+		atom.Store(&a)
+		atom.Load()
+		atom.CompareAndSwap(&a, &b)
+		atom.Load()
+		atom.Store(&empty)
 	}
 }
