@@ -9,6 +9,7 @@ import (
 
 func TestBool(t *testing.T) {
 	atom := NewBool(false)
+	// t.Log(unsafe.Sizeof(*atom))
 	require.False(t, atom.Toggle(), "Expected Toggle to return previous value.")
 	require.True(t, atom.Toggle(), "Expected Toggle to return previous value.")
 	require.False(t, atom.Toggle(), "Expected Toggle to return previous value.")

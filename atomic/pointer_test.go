@@ -19,28 +19,28 @@ func TestPointer(t *testing.T) {
 
 	tests := []struct {
 		desc      string
-		newAtomic func() Pointer[foo]
+		newAtomic func() *Pointer[foo]
 		initial   *foo
 	}{
 		{
 			desc: "New",
-			newAtomic: func() Pointer[foo] {
+			newAtomic: func() *Pointer[foo] {
 				return NewPointer(&i)
 			},
 			initial: &i,
 		},
 		{
 			desc: "New/nil",
-			newAtomic: func() Pointer[foo] {
+			newAtomic: func() *Pointer[foo] {
 				return NewPointer[foo](nil)
 			},
 			initial: nil,
 		},
 		{
 			desc: "zero value",
-			newAtomic: func() Pointer[foo] {
+			newAtomic: func() *Pointer[foo] {
 				var p Pointer[foo]
-				return p
+				return &p
 			},
 			initial: nil,
 		},
