@@ -41,24 +41,43 @@ jobs:
     - name: Checkout (PR)
       uses: actions/checkout@v1
 
-    - name: Benchmark (PR)
+    - name: Get changes list
+      id: changed
       run: |
-        go test -count 6 -benchmem -run=^$ -bench ^Benchmark ./... | tee ${{ env.TMP_DIR }}/bench-pr.txt
+        ./ci/changes.py -b ${{ github.event.pull_request.base.sha }} -u ${{ github.event.pull_request.head.sha }} > ${{ env.TMP_DIR }}/changes.txt
+        if [ -s ${{ env.TMP_DIR }}/changes.txt ]; then
+          echo "changed=${{ env.TMP_DIR }}/changes.txt" >> $GITHUB_OUTPUT
+          cat ${{ env.TMP_DIR }}/changes.txt
+        else
+          echo "changed=" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Benchmark (PR)
+      if: ${{ steps.changed.outputs.changed != '' }}
+      run: |
+        ./ci/bechmark.py -f ${{ steps.changed.outputs.changed }} | tee ${{ env.TMP_DIR }}/bench-pr.txt
 
     - name: Benchmark (Base)
       if: ${{ steps.changed.outputs.changed != '' }}
       run: |
         git checkout ${{ github.event.pull_request.base.sha }}
-        go test -count 6 -benchmem -run=^$ -bench ^Benchmark ./... | tee ${{ env.TMP_DIR }}/bench-base.txt
+        ./ci/bechmark.py -f ${{ steps.changed.outputs.changed }} | tee ${{ env.TMP_DIR }}/bench-base.txt
 
     - name: Benchstat
+      if: ${{ steps.changed.outputs.changed != '' }}
       run: |
         set -euo pipefail
         cp ${{ env.TMP_DIR }}/bench-base.txt ${{ env.TMP_DIR }}/bench-pr.txt .
         qbenchstat -increasing 'match/s' -threshold 2 -format html bench-base.txt bench-pr.txt > ${{ env.TMP_DIR }}/benchstat.html
+        if [ -s ${{ env.TMP_DIR }}/benchstat.html ]; then
+          echo "REGRESSION_DETECT=true" >> $GITHUB_ENV
+        else
+          echo "REGRESSION_DETECT=false" >> $GITHUB_ENV
+        fi
         qbenchstat -increasing 'match/s' -format html bench-base.txt bench-pr.txt > benchstat_${{ matrix.go-version }}.html
 
     - name: Upload Benchstat
+      if: ${{ steps.changed.outputs.changed }}
       uses: actions/upload-artifact@v2
       with: 
         name: benchstat_${{ env.HEAD_SHA }}
