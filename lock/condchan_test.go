@@ -144,7 +144,7 @@ func TestCondChanSignalStealing(t *testing.T) {
 
 		<-ch
 
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(time.Millisecond * 20)
 
 		// We know that the waiter is in the cond.Wait() call because we
 		// synchronized with it, then acquired/released the mutex it was
@@ -229,20 +229,27 @@ func TestChanCondSignalRace(t *testing.T) {
 }
 
 func TestCondChanSignalRace3(t *testing.T) {
-	var x atomic.Int64
-	var cc CondChan
+	var (
+		x  atomic.Int64
+		cc CondChan
+	)
 	done := make(chan bool)
+	step1 := make(chan bool)
+	step2 := make(chan bool)
+
 	go func() {
 		x.Store(1)
 		cc.L.Lock()
+		step1 <- true
 		cc.Wait()
 		cc.L.Unlock()
+		<-step2
 		if x.Load() != 2 {
 			cc.L.Unlock()
 			t.Error("want 2")
 		}
 		x.Store(3)
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(time.Millisecond)
 		cc.L.Lock()
 		cc.Signal()
 		cc.L.Unlock()
@@ -251,12 +258,13 @@ func TestCondChanSignalRace3(t *testing.T) {
 	go func() {
 		for {
 			if x.Load() == 1 {
+				<-step1
 				x.Store(2)
 				// wait for lock and wait in third goroutine
-				time.Sleep(time.Millisecond * 10)
 				cc.L.Lock()
 				cc.Signal()
 				cc.L.Unlock()
+				step2 <- true
 				break
 			}
 			runtime.Gosched()

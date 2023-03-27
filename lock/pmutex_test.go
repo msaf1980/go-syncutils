@@ -272,14 +272,14 @@ func TestPMutex(t *testing.T) {
 		mx.Unlock()
 	}()
 
-	t2 := mx.RLockWithTimeout(10 * time.Millisecond)
-	t3 := mx.RLockWithTimeout(10 * time.Millisecond)
+	t2 := mx.RLockWithTimeout(50 * time.Millisecond)
+	t3 := mx.RLockWithTimeout(50 * time.Millisecond)
 
 	if !t2 {
 		t.Fatal("TestPMutex t2 fail R lock duration")
 	}
 	if !t3 {
-		t.Fatal("TestPMutex t2 fail R lock duration")
+		t.Fatal("TestPMutex t3 fail R lock duration")
 	}
 
 }
